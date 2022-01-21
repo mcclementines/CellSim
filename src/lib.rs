@@ -89,8 +89,8 @@ pub fn next_state(state: Vec<Cell>) -> Vec<Cell> {
     let mut next = Vec::new();
 
     for (i, _) in state.iter().enumerate() {
-        let mut before;
-        let mut after;
+        let before;
+        let after;
 
         if i == 0 {
             before = state.len() - 1;
