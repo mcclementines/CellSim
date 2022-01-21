@@ -1,3 +1,9 @@
+//! # Cell Sim
+//!
+//! 'cell_sim' is a terminal program used to simulate 1d cell automata.
+//! Currently only implemented with Wolfram's Rule 30.
+//!
+
 use std::env;
 use std::process;
 
