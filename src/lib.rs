@@ -5,6 +5,8 @@ use std::collections::HashMap;
 
 use clap::{ Parser, ArgEnum };
 
+mod rules;
+
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Config {
@@ -42,7 +44,8 @@ pub enum Rule {
 
 #[derive(PartialEq, Debug)]
 pub struct Rulebook {
-    rules: HashMap<Vec<Cell>, u8>
+    rules: HashMap<Vec<Cell>, u8>,
+    pattern_size: usize
 }
 
 #[derive(Clone, Eq, Hash, PartialEq, Debug)]
@@ -61,14 +64,26 @@ impl fmt::Display for Cell {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let rulebook = *decode_rule(load_rule(config.rule)).unwrap();
     let mut state = str_to_cells(&config.initial_state);
      
     for i in 0..config.periods {
         print_state(i, &state);
-        state = next_state(Rulebook{ rules: HashMap::new() }, state);
+        state = next_state(&rulebook, state);
     }
 
     Ok(())
+}
+
+pub fn load_rule(rule: Rule) -> &'static str {
+    use crate::rules::rules;
+
+    match rule {
+        Rule::Rule30 => rules::RULE30,
+        Rule::Rule90 => rules::RULE90,
+        Rule::Rule110 => rules::RULE110, 
+        _ => rules::RULE30
+    }
 }
 
 pub fn decode_rule(rule: &str) -> Result<Box<Rulebook>, &str>  {
@@ -83,9 +98,9 @@ pub fn decode_rule(rule: &str) -> Result<Box<Rulebook>, &str>  {
         Err(_) => return Err("a problem when decoding the rule occured")
     };
 
-    if rule_string.len() / pattern_size != rule_string.len() % pattern_size {
-        return Err("improper rule definition size - incomplete pattern")
-    }
+//    if rule_string.len() / pattern_size != rule_string.len() % pattern_size {
+//        return Err("improper rule definition size - incomplete pattern")
+//    }
     
     let mut pattern = vec!();
     let mut pattern_count = 0;
@@ -107,7 +122,7 @@ pub fn decode_rule(rule: &str) -> Result<Box<Rulebook>, &str>  {
         pattern_count += 1;
     }
 
-    Ok(Box::new(Rulebook { rules: patterns }))
+    Ok(Box::new(Rulebook { rules: patterns, pattern_size }))
 }
 
 pub fn str_to_cells(state: &String) -> Vec<Cell> {
@@ -134,48 +149,34 @@ pub fn print_state(period: u16, state: &Vec<Cell>) {
     println!("{}: {}", period, str_state);
 }
 
-// RULE 30
-pub fn next_state(rules: Rulebook, state: Vec<Cell>) -> Vec<Cell> {
-    let mut next = Vec::new();
+pub fn next_state(rules: &Rulebook, state: Vec<Cell>) -> Vec<Cell> {
+    let mut next = vec!();
+
+    let reach = (rules.pattern_size/2) as isize;
+    let state_len = state.len() as isize;
 
     for (i, _) in state.iter().enumerate() {
-        let before;
-        let after;
+        let mut pattern = vec!();
+        let ii = i as isize;
 
-        if i == 0 {
-            before = state.len() - 1;
-        } else {
-            before = i - 1;
+        for x in (ii-reach)..(ii+reach+1) {
+            pattern.push(state[((x % state_len + state_len) % state_len) as usize].clone());
         }
 
-        if i == state.len() - 1 {
-            after = 0;
-        } else {
-            after = i + 1;
+        if rules.rules.contains_key(&pattern) {
+            let cell = match rules.rules.get(&pattern) {
+                Some(val) => match val {
+                    &1 => Cell::Alive,
+                    _ => Cell::Dead
+                },
+                None => Cell::Dead
+            };
+
+            next.push(cell);
         }
-        
-        next.push(process(&state[before], &state[i], &state[after]));
     }
 
-    next 
-}
-
-pub fn process(b: &Cell, i: &Cell, a: &Cell) -> Cell {
-    use Cell::*;
-
-    let three = (b, i, a);
-
-    if three == (&Dead, &Dead, &Alive) {
-        return Alive
-    } else if three == (&Dead, &Alive, &Dead) {
-        return Alive
-    } else if three == (&Dead, &Alive, &Alive) {
-        return Alive
-    } else if three == (&Alive, &Dead, &Dead) {
-        return Alive
-    }
-
-    Dead
+    next
 }
 
 #[cfg(test)]
@@ -196,7 +197,9 @@ mod tests {
         let rules = Box::new(Rulebook { 
             rules: HashMap::from([
                 (vec!(Cell::Alive, Cell::Dead, Cell::Alive), 1) 
-            ])});  
+            ]),
+            pattern_size: 3
+        });  
 
         assert_eq!(Ok(rules), decode_rule(rule)); 
     }
