@@ -1,39 +1,50 @@
 use std::error::Error;
-use std::env;
 use std::fmt;
+// use std::path;
 
+use clap::{ Parser, ArgEnum };
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
 pub struct Config {
+    /// Number of times rule is applied
     periods: u16,
-    initial_state: String
+
+    /// State before rule is applied
+    initial_state: String,
+    
+    /// Rule to apply
+    #[clap(short, long, arg_enum, default_value_t = Rule::Rule30)]
+    rule: Rule,
+    
+//    #[clap(short, long, parse(from_os_str))]
+//    custom: Path::PathBuf
 }
 
-impl Config {
-    pub fn new(mut args: env::Args) -> Result<Config, &'static str> {
-        args.next();
+#[derive(ArgEnum, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum Rule {
+    /// Applies elementary Rule 30 to state, default value
+    Rule30,
 
-        let periods = match args.next() {
-            Some(arg) => arg,
-            None => return Err("need to define the number of periods") 
-        };
+    /// Applies elementary Rule 90 to state
+    Rule90,
 
-        let periods = match periods.parse::<u16>() {
-            Ok(num) => num,
-            Err(_) => return Err("periods needs to be a valid number")
-        };
+    /// Applies elementary Rule 110 to state
+    Rule110,
 
-        let initial_state = match args.next() {
-            Some(arg) => arg,
-            None => return Err("need initial sequence")
-        };
+    /// Applies elementary Rule 184 to state
+    Rule184,
 
-        Ok(Config {
-            periods,
-            initial_state
-        })
-    }
+//    /// Applies user-defined rule to state
+//    custom(path),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq, Debug)]
+pub struct Rulebook {
+    rules: Vec<(Vec<Cell>, usize)>
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub enum Cell {
     Alive,
     Dead
@@ -41,7 +52,6 @@ pub enum Cell {
 
 impl fmt::Display for Cell {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        
         match self {
             Cell::Alive => write!(fmt, "{}", "*"),
             Cell::Dead => write!(fmt, "{}", " ")
@@ -51,13 +61,52 @@ impl fmt::Display for Cell {
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut state = str_to_cells(&config.initial_state);
-        
+     
     for i in 0..config.periods {
         print_state(i, &state);
-        state = next_state(state);
+        state = next_state(Rulebook{ rules: vec!() }, state);
     }
 
     Ok(())
+}
+
+pub fn decode_rule(rule: &str) -> Result<Box<Rulebook>, &str>  {
+    let mut patterns = vec!();
+
+    let rule_string = String::from(rule);
+    let pattern_size = String::from(&rule_string[0..4]);
+
+    let rule_string = String::from(&rule_string[4..rule_string.len()]);
+    let pattern_size = match usize::from_str_radix(&pattern_size, 2) {
+        Ok(x) => x,
+        Err(_) => return Err("a problem when decoding the rule occured")
+    };
+
+    if rule_string.len() / pattern_size != rule_string.len() % pattern_size {
+        return Err("improper rule definition size - incomplete pattern")
+    }
+    
+    let mut pattern = vec!();
+    let mut pattern_count = 0;
+
+    for c in rule_string.chars() {
+        if pattern_count == pattern_size {
+            patterns.push((pattern.clone(), c.to_string().parse::<usize>().unwrap()));
+            pattern.clear(); 
+            pattern_count = 0;
+            continue;
+        }
+
+        match c {
+            '1' => pattern.push(Cell::Alive),
+            '0' => pattern.push(Cell::Dead),
+            _ => return Err("rules must be defined in base 2")
+        }
+
+        pattern_count += 1;
+    }
+
+    Ok(Box::new(Rulebook { rules: patterns }))
 }
 
 pub fn str_to_cells(state: &String) -> Vec<Cell> {
@@ -85,7 +134,7 @@ pub fn print_state(period: u16, state: &Vec<Cell>) {
 }
 
 // RULE 30
-pub fn next_state(state: Vec<Cell>) -> Vec<Cell> {
+pub fn next_state(rules: Rulebook, state: Vec<Cell>) -> Vec<Cell> {
     let mut next = Vec::new();
 
     for (i, _) in state.iter().enumerate() {
@@ -131,13 +180,21 @@ pub fn process(b: &Cell, i: &Cell, a: &Cell) -> Cell {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    
     #[test]
     fn convert_str_to_cells() {
         let initial = String::from("* * ");
         let cells = vec!(Cell::Alive, Cell::Dead, Cell::Alive, Cell::Dead);
 
         assert_eq!(cells, str_to_cells(&initial));
+    }
+
+    #[test]
+    fn convert_str_to_rule() {
+        let rule = "00111011";
+        let rules = Box::new(Rulebook { rules: vec!((vec!(Cell::Alive, Cell::Dead, Cell::Alive), 1)) });  
+
+        assert_eq!(Ok(rules), decode_rule(rule)); 
     }
 }
 
