@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt;
+use std::collections::HashMap;
 // use std::path;
 
 use clap::{ Parser, ArgEnum };
@@ -41,10 +42,10 @@ pub enum Rule {
 
 #[derive(PartialEq, Debug)]
 pub struct Rulebook {
-    rules: Vec<(Vec<Cell>, usize)>
+    rules: HashMap<Vec<Cell>, u8>
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug)]
 pub enum Cell {
     Alive,
     Dead
@@ -64,14 +65,14 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
      
     for i in 0..config.periods {
         print_state(i, &state);
-        state = next_state(Rulebook{ rules: vec!() }, state);
+        state = next_state(Rulebook{ rules: HashMap::new() }, state);
     }
 
     Ok(())
 }
 
 pub fn decode_rule(rule: &str) -> Result<Box<Rulebook>, &str>  {
-    let mut patterns = vec!();
+    let mut patterns: HashMap<Vec<Cell>, u8> = HashMap::new();
 
     let rule_string = String::from(rule);
     let pattern_size = String::from(&rule_string[0..4]);
@@ -91,7 +92,7 @@ pub fn decode_rule(rule: &str) -> Result<Box<Rulebook>, &str>  {
 
     for c in rule_string.chars() {
         if pattern_count == pattern_size {
-            patterns.push((pattern.clone(), c.to_string().parse::<usize>().unwrap()));
+            patterns.entry(pattern.clone()).or_insert(c.to_string().parse::<u8>().unwrap());
             pattern.clear(); 
             pattern_count = 0;
             continue;
@@ -192,7 +193,10 @@ mod tests {
     #[test]
     fn convert_str_to_rule() {
         let rule = "00111011";
-        let rules = Box::new(Rulebook { rules: vec!((vec!(Cell::Alive, Cell::Dead, Cell::Alive), 1)) });  
+        let rules = Box::new(Rulebook { 
+            rules: HashMap::from([
+                (vec!(Cell::Alive, Cell::Dead, Cell::Alive), 1) 
+            ])});  
 
         assert_eq!(Ok(rules), decode_rule(rule)); 
     }
