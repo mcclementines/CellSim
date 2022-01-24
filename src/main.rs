@@ -6,8 +6,8 @@
 
 use std::process;
 
-use clap::Parser;
 use cell_sim::Config;
+use clap::Parser;
 
 fn main() {
     let config = Config::parse();
