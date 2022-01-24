@@ -7,3 +7,7 @@ license = "MIT"
 
 [dependencies]
 clap = { version = "3.0.10", features = ["derive"] }
+
+[[bin]]
+name = "cellsim"
+path = "src/main.rs"
