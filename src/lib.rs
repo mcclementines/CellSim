@@ -21,12 +21,19 @@ pub struct Config {
     /// Rule to apply
     #[clap(short, long, arg_enum, default_value_t = rules::Rule::Rule30)]
     rule: rules::Rule,
-    //    #[clap(short, long, parse(from_os_str))]
-    //    custom: Path::PathBuf
+    
+    /// Apply custom rule
+    #[clap(short, long)]
+    custom: Option<String>
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let rulebook = *rules::decode_rule(rules::load_rule(config.rule)).unwrap();
+    let rule = match config.custom {
+        Some(x) => x,
+        None => String::from(rules::load_rule(config.rule))
+    };
+
+    let rulebook = *rules::decode_rule(&rule).unwrap();
     let mut state = cell::str_to_cells(&config.initial_state);
 
     for i in 0..config.periods {

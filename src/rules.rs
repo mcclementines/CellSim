@@ -16,8 +16,6 @@ pub enum Rule {
 
     /// Applies elementary Rule 184 to state
     Rule184,
-    //    /// Applies user-defined rule to state
-    //    custom(path),
 }
 
 #[derive(PartialEq, Debug)]
