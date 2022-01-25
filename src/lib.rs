@@ -21,16 +21,16 @@ pub struct Config {
     /// Rule to apply
     #[clap(short, long, arg_enum, default_value_t = rules::Rule::Rule30)]
     rule: rules::Rule,
-    
+
     /// Apply custom rule
     #[clap(short, long)]
-    custom: Option<String>
+    custom: Option<String>,
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let rule = match config.custom {
         Some(x) => x,
-        None => String::from(rules::load_rule(config.rule))
+        None => String::from(rules::load_rule(config.rule)),
     };
 
     let rulebook = *rules::decode_rule(&rule).unwrap();

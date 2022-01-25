@@ -15,17 +15,15 @@ pub fn next_state(rules: &Rulebook, state: Vec<Cell>) -> Vec<Cell> {
             pattern.push(state[((x % state_len + state_len) % state_len) as usize].clone());
         }
 
-        if rules.rules.contains_key(&pattern) {
-            let cell = match rules.rules.get(&pattern) {
-                Some(val) => match val {
-                    &1 => Cell::Alive,
-                    _ => Cell::Dead,
-                },
-                None => Cell::Dead,
-            };
+        let cell = match rules.rules.get(&pattern) {
+            Some(val) => match val {
+                &1 => Cell::Alive,
+                _ => Cell::Dead,
+            },
+            None => Cell::Dead,
+        };
 
-            next.push(cell);
-        }
+        next.push(cell);
     }
 
     next

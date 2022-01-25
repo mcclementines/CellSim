@@ -1,6 +1,6 @@
 [package]
 name = "cell_sim"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Jonathan McClement <j.mcclement@columbia.edu>"]
 description = "A 1d cell automata simulator for the command line"
